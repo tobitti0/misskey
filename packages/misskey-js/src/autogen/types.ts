@@ -9525,6 +9525,7 @@ export interface operations {
                         backgroundImageUrl: string | null;
                         deeplAuthKey: string | null;
                         deeplIsPro: boolean;
+                        openaiTranslationModel: string;
                         defaultDarkTheme: string | null;
                         defaultLightTheme: string | null;
                         clientOptions: components['schemas']['MetaClientOptions'];
@@ -13012,6 +13013,7 @@ export interface operations {
                     langs?: string[];
                     deeplAuthKey?: string | null;
                     deeplIsPro?: boolean;
+                    openaiTranslationModel?: string;
                     enableEmail?: boolean;
                     email?: string | null;
                     smtpSecure?: boolean;
@@ -31797,6 +31799,13 @@ export interface operations {
                     'application/json': {
                         sourceLang: string;
                         text: string;
+                        model?: string;
+                        cached?: boolean;
+                        usage?: {
+                            inputTokens: number;
+                            outputTokens: number;
+                            totalTokens: number;
+                        };
                     };
                 };
             };

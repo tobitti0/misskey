@@ -3582,3 +3582,13 @@ _qr:
   scanFile: "端末の画像をスキャン"
   raw: "テキスト"
   mfm: "MFM"
+
+_openaiTranslation:
+  title: "OpenAI 翻訳"
+  model: "翻訳モデル"
+  modelDescription: "既定は gpt-5.4-mini です。Responses API と reasoning effort none に対応したモデル名を指定してください。変更後の翻訳から適用されます。"
+  environmentDescription: "利用する翻訳サービスと API キーはサーバーの環境変数で設定します。OpenAI を使用するには MISSKEY_TRANSLATION_PROVIDER=openai と OPENAI_API_KEY が必要です。"
+  usedModel: "モデル: {model}"
+  tokenUsage: "トークン: 入力 {input} / 出力 {output} / 合計 {total}"
+  cachedUsage: "保存済みの翻訳です。上記は初回翻訳時の使用量で、今回の表示による追加消費はありません。"
+  cachedResult: "保存済みの翻訳です。"

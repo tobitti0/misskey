@@ -47,6 +47,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 					</MkFolder>
 				</SearchMarker>
+
+				<SearchMarker v-slot="slotProps" :keywords="['openai', 'translation', 'model']">
+					<MkFolder :defaultOpen="slotProps.isParentOfTarget">
+						<template #label><SearchLabel>{{ i18n.ts._openaiTranslation.title }}</SearchLabel></template>
+
+						<div class="_gaps_m">
+							<SearchMarker>
+								<MkInput v-model="openaiTranslationModel" :spellcheck="false" autocapitalize="off">
+									<template #label><SearchLabel>{{ i18n.ts._openaiTranslation.model }}</SearchLabel></template>
+									<template #caption>{{ i18n.ts._openaiTranslation.modelDescription }}</template>
+								</MkInput>
+							</SearchMarker>
+							<MkInfo>{{ i18n.ts._openaiTranslation.environmentDescription }}</MkInfo>
+							<MkButton primary :disabled="!isOpenaiTranslationModelValid" @click="save_openai">{{ i18n.ts.save }}</MkButton>
+						</div>
+					</MkFolder>
+				</SearchMarker>
 			</div>
 		</SearchMarker>
 	</div>
@@ -58,6 +75,7 @@ import { ref, computed } from 'vue';
 import MkInput from '@/components/MkInput.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
+import MkInfo from '@/components/MkInfo.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { fetchInstance } from '@/instance.js';
@@ -69,6 +87,8 @@ const meta = await misskeyApi('admin/meta');
 
 const deeplAuthKey = ref(meta.deeplAuthKey ?? '');
 const deeplIsPro = ref(meta.deeplIsPro);
+const openaiTranslationModel = ref(meta.openaiTranslationModel);
+const isOpenaiTranslationModelValid = computed(() => /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(openaiTranslationModel.value));
 const googleAnalyticsMeasurementId = ref(meta.googleAnalyticsMeasurementId ?? '');
 
 function save_deepl() {
@@ -83,6 +103,15 @@ function save_deepl() {
 function save_googleAnalytics() {
 	os.apiWithDialog('admin/update-meta', {
 		googleAnalyticsMeasurementId: googleAnalyticsMeasurementId.value,
+	}).then(() => {
+		fetchInstance(true);
+	});
+}
+
+function save_openai() {
+	if (!isOpenaiTranslationModelValid.value) return;
+	os.apiWithDialog('admin/update-meta', {
+		openaiTranslationModel: openaiTranslationModel.value,
 	}).then(() => {
 		fetchInstance(true);
 	});

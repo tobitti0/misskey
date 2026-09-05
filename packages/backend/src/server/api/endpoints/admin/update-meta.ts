@@ -111,6 +111,7 @@ export const paramDef = {
 		},
 		deeplAuthKey: { type: 'string', nullable: true },
 		deeplIsPro: { type: 'boolean' },
+		openaiTranslationModel: { type: 'string', minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]*$' },
 		enableEmail: { type: 'boolean' },
 		email: { type: 'string', nullable: true },
 		smtpSecure: { type: 'boolean' },
@@ -600,6 +601,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			if (ps.deeplIsPro !== undefined) {
 				set.deeplIsPro = ps.deeplIsPro;
+			}
+
+			if (ps.openaiTranslationModel !== undefined) {
+				set.openaiTranslationModel = ps.openaiTranslationModel;
 			}
 
 			if (ps.enableIpLogging !== undefined) {

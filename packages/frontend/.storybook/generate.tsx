@@ -461,6 +461,7 @@ function toStories(component: string): Promise<string> {
 		globSync('src/components/MkInstanceCardMini.vue'),
 		globSync('src/components/MkInviteCode.vue'),
 		globSync('src/components/MkTagItem.vue'),
+		globSync('src/components/MkTranslationInfo.vue'),
 		globSync('src/components/MkRoleSelectDialog.vue'),
 		globSync('src/components/grid/MkGrid.vue'),
 		globSync('src/pages/admin/custom-emojis-manager2.vue'),

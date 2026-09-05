@@ -30,6 +30,35 @@ describe('Endpoints', () => {
 		await api('admin/update-meta', { federation: 'all' }, alice as misskey.entities.SignupResponse);
 	}, 1000 * 60 * 2);
 
+	describe('OpenAI translation model', () => {
+		test('administrator can save and read the model without exposing it in public meta', async () => {
+			const before = await api('admin/meta', {}, alice);
+			expect(before.body.openaiTranslationModel).toBe('gpt-5.4-mini');
+			try {
+				const updated = await api('admin/update-meta', { openaiTranslationModel: 'gpt-5.4-mini-2026-03-17' }, alice);
+				expect(updated.status).toBe(204);
+				const after = await api('admin/meta', {}, alice);
+				expect(after.body.openaiTranslationModel).toBe('gpt-5.4-mini-2026-03-17');
+				const publicMeta = await api('meta', {});
+				expect(publicMeta.body).not.toHaveProperty('openaiTranslationModel');
+				expect(publicMeta.body).not.toHaveProperty('openaiApiKey');
+			} finally {
+				await api('admin/update-meta', { openaiTranslationModel: before.body.openaiTranslationModel }, alice);
+			}
+		});
+
+		test('non-administrator cannot change the model', async () => {
+			const response = await api('admin/update-meta', { openaiTranslationModel: 'gpt-5.4-mini' }, bob);
+			expect(response.status).toBe(403);
+		});
+
+		test.each(['', 'invalid model', 'x'.repeat(129)])('rejects invalid model names: %s', async (model) => {
+			const response = await api('admin/update-meta', { openaiTranslationModel: model }, alice);
+			expect(response.status).toBe(400);
+			expect(response.body).toMatchObject({ error: { code: 'INVALID_PARAM' } });
+		});
+	});
+
 	describe('signup', () => {
 		test('不正なユーザー名でアカウントが作成できない', async () => {
 			const res = await api('signup', {

@@ -1,0 +1,29 @@
+services:
+  check:
+    image: misskey-mtn-translation-check
+    build:
+      context: ../..
+      dockerfile: mtn/translation/Dockerfile.check
+    command: ["bash", "-c", "bash mtn/translation/check.sh && bash mtn/translation/check-db.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: test-misskey
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  redis:
+    image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30

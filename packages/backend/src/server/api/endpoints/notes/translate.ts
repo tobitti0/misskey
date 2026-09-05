@@ -4,6 +4,7 @@
  */
 
 import { URLSearchParams } from 'node:url';
+import type { Redis } from 'ioredis';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
@@ -12,6 +13,9 @@ import { GetterService } from '@/server/api/GetterService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { MiMeta } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
+import { getTranslationProvider, getOpenAiTranslationConfig } from '@/misc/translation/config.js';
+import { translateWithOpenAi } from '@/misc/translation/openai.js';
+import { withTranslationCache } from '@/misc/translation/cache.js';
 import { ApiError } from '../../error.js';
 
 export const meta = {
@@ -26,6 +30,16 @@ export const meta = {
 		properties: {
 			sourceLang: { type: 'string' },
 			text: { type: 'string' },
+			model: { type: 'string', optional: true, nullable: false },
+			cached: { type: 'boolean', optional: true, nullable: false },
+			usage: {
+				type: 'object', optional: true, nullable: false,
+				properties: {
+					inputTokens: { type: 'integer', optional: false, nullable: false },
+					outputTokens: { type: 'integer', optional: false, nullable: false },
+					totalTokens: { type: 'integer', optional: false, nullable: false },
+				},
+			},
 		},
 	},
 
@@ -63,6 +77,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		@Inject(DI.meta)
 		private serverSettings: MiMeta,
 
+		@Inject(DI.redis)
+		private redis: Redis,
+
 		private noteEntityService: NoteEntityService,
 		private getterService: GetterService,
 		private httpRequestService: HttpRequestService,
@@ -92,7 +109,18 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				return;
 			}
 
-			if (this.serverSettings.deeplAuthKey == null) {
+			const provider = getTranslationProvider();
+			if (provider === 'openai') {
+				const credentials = getOpenAiTranslationConfig();
+				if (!credentials) throw new ApiError(meta.errors.unavailable);
+				const config = { ...credentials, model: this.serverSettings.openaiTranslationModel };
+				return await withTranslationCache(this.redis, {
+					noteId: note.id, text, targetLang: ps.targetLang, provider: `openai:${config.model}`,
+				}, () => translateWithOpenAi(this.httpRequestService, config, text, ps.targetLang))
+					.catch(() => { throw new ApiError(); });
+			}
+
+			if (provider !== 'deepl' || this.serverSettings.deeplAuthKey == null) {
 				throw new ApiError(meta.errors.unavailable);
 			}
 
@@ -105,27 +133,31 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			const endpoint = this.serverSettings.deeplIsPro ? 'https://api.deepl.com/v2/translate' : 'https://api-free.deepl.com/v2/translate';
 
-			const res = await this.httpRequestService.send(endpoint, {
-				method: 'POST',
-				headers: {
-					'Authorization': `DeepL-Auth-Key ${this.serverSettings.deeplAuthKey}`,
-					'Content-Type': 'application/x-www-form-urlencoded',
-					Accept: 'application/json, */*',
-				},
-				body: params.toString(),
+			return await withTranslationCache(this.redis, {
+				noteId: note.id, text, targetLang, provider: `deepl:${this.serverSettings.deeplIsPro ? 'pro' : 'free'}`,
+			}, async () => {
+				const res = await this.httpRequestService.send(endpoint, {
+					method: 'POST',
+					headers: {
+						'Authorization': `DeepL-Auth-Key ${this.serverSettings.deeplAuthKey}`,
+						'Content-Type': 'application/x-www-form-urlencoded',
+						Accept: 'application/json, */*',
+					},
+					body: params.toString(),
+				});
+
+				const json = (await res.json()) as {
+					translations: {
+						detected_source_language: string;
+						text: string;
+					}[];
+				};
+
+				return {
+					sourceLang: json.translations[0].detected_source_language,
+					text: json.translations[0].text,
+				};
 			});
-
-			const json = (await res.json()) as {
-				translations: {
-					detected_source_language: string;
-					text: string;
-				}[];
-			};
-
-			return {
-				sourceLang: json.translations[0].detected_source_language,
-				text: json.translations[0].text,
-			};
 		});
 	}
 }

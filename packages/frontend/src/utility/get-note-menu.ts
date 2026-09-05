@@ -344,12 +344,15 @@ export function getNoteMenu(props: {
 			}
 		} else if ($i?.policies.canUseTranslator && instance.translatorAvailable) {
 			props.translating.value = true;
-			const res = await misskeyApi('notes/translate', {
-				noteId: appearNote.id,
-				targetLang: miLocalStorage.getItem('lang') ?? navigator.language,
-			});
-			props.translating.value = false;
-			props.translation.value = res;
+			try {
+				const res = await misskeyApi('notes/translate', {
+					noteId: appearNote.id,
+					targetLang: miLocalStorage.getItem('lang') ?? navigator.language,
+				});
+				props.translation.value = res;
+			} finally {
+				props.translating.value = false;
+			}
 		}
 	}
 

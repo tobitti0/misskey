@@ -1,0 +1,8 @@
+FROM node:26.4.0-trixie
+WORKDIR /misskey
+COPY . .
+RUN node -p "require('./package.json').packageManager" | xargs npm install -g
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+RUN cp .github/misskey/test.yml .config/test.yml
+ENV NODE_ENV=test
+CMD ["bash", "mtn/translation/check.sh"]

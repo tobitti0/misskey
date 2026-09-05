@@ -4,6 +4,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import { isTranslationAvailable } from '@/misc/translation/config.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { MetaService } from '@/core/MetaService.js';
 import type { Config } from '@/config.js';
@@ -435,6 +436,10 @@ export const meta = {
 				type: 'boolean',
 				optional: false, nullable: false,
 			},
+			openaiTranslationModel: {
+				type: 'string',
+				optional: false, nullable: false,
+			},
 			defaultDarkTheme: {
 				type: 'string',
 				optional: false, nullable: true,
@@ -690,7 +695,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				clientOptions: instance.clientOptions,
 				enableEmail: instance.enableEmail,
 				enableServiceWorker: instance.enableServiceWorker,
-				translatorAvailable: instance.deeplAuthKey != null,
+				translatorAvailable: isTranslationAvailable(instance.deeplAuthKey),
 				cacheRemoteFiles: instance.cacheRemoteFiles,
 				cacheRemoteSensitiveFiles: instance.cacheRemoteSensitiveFiles,
 				pinnedUsers: instance.pinnedUsers,
@@ -737,6 +742,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				objectStorageS3ForcePathStyle: instance.objectStorageS3ForcePathStyle,
 				deeplAuthKey: instance.deeplAuthKey,
 				deeplIsPro: instance.deeplIsPro,
+				openaiTranslationModel: instance.openaiTranslationModel,
 				enableIpLogging: instance.enableIpLogging,
 				enableActiveEmailValidation: instance.enableActiveEmailValidation,
 				enableVerifymailApi: instance.enableVerifymailApi,

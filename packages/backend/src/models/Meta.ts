@@ -380,6 +380,12 @@ export class MiMeta {
 	public deeplIsPro: boolean;
 
 	@Column('varchar', {
+		length: 128,
+		default: 'gpt-5.4-mini',
+	})
+	public openaiTranslationModel: string;
+
+	@Column('varchar', {
 		length: 1024,
 		nullable: true,
 	})

@@ -83,6 +83,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<div v-else-if="translation">
 								<b>{{ i18n.tsx.translatedFrom({ x: translation.sourceLang }) }}: </b>
 								<Mfm :text="translation.text" :author="appearNote.user" :nyaize="'respect'" :emojiUrls="appearNote.emojis" class="_selectable"/>
+								<MkTranslationInfo :translation="translation"/>
 							</div>
 						</div>
 					</div>
@@ -220,6 +221,7 @@ import MkCwButton from '@/components/MkCwButton.vue';
 import MkPoll from '@/components/MkPoll.vue';
 import MkUrlPreview from '@/components/MkUrlPreview.vue';
 import MkInstanceTicker from '@/components/MkInstanceTicker.vue';
+import MkTranslationInfo from '@/components/MkTranslationInfo.vue';
 
 const props = withDefaults(defineProps<{
 	note: Misskey.entities.Note;
