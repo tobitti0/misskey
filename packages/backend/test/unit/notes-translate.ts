@@ -36,7 +36,7 @@ describe('notes/translate', () => {
 		vi.stubEnv('MISSKEY_TRANSLATION_PROVIDER', '');
 		vi.stubEnv('OPENAI_API_KEY', 'test-key');
 		vi.stubEnv('OPENAI_PROJECT_ID', '');
-		settings = mockDeep<MiMeta>({ deeplAuthKey: 'deepl-key', deeplIsPro: false, openaiTranslationModel: 'gpt-5.4-mini' });
+		settings = mockDeep<MiMeta>({ deeplAuthKey: 'deepl-key', deeplIsPro: false, translationProvider: 'deepl', openaiApiKey: null, openaiTranslationModel: 'gpt-5.4-mini' });
 		notes = mockDeep<NoteEntityService>();
 		getter = mockDeep<GetterService>();
 		http = mockDeep<HttpRequestService>();
@@ -93,6 +93,21 @@ describe('notes/translate', () => {
 		settings.openaiTranslationModel = 'custom-model';
 		await expect(exec()).resolves.toMatchObject({ cached: false, model: 'custom-model' });
 		expect(http.send).toHaveBeenCalledTimes(2);
+	});
+
+	it('uses saved settings immediately and stops serving cached results after the key is removed', async () => {
+		vi.stubEnv('OPENAI_API_KEY', '');
+		settings.translationProvider = 'openai';
+		settings.openaiApiKey = 'saved-key';
+		http.send.mockResolvedValue(new Response(JSON.stringify({ status: 'completed', output: [{
+			type: 'message', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: 'こんにちは' }],
+		}] })));
+		await expect(exec()).resolves.toMatchObject({ text: 'こんにちは', cached: false });
+		expect(http.send.mock.calls[0][1]?.headers?.Authorization).toBe('Bearer saved-key');
+		await expect(exec()).resolves.toMatchObject({ cached: true });
+		settings.openaiApiKey = null;
+		await expect(exec()).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+		expect(http.send).toHaveBeenCalledTimes(1);
 	});
 
 	it.each(['deepl', 'openai'])('enforces policy and visibility before sending to %s', async (provider) => {

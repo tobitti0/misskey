@@ -109,9 +109,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				return;
 			}
 
-			const provider = getTranslationProvider();
+			const provider = getTranslationProvider(this.serverSettings);
 			if (provider === 'openai') {
-				const credentials = getOpenAiTranslationConfig();
+				const credentials = getOpenAiTranslationConfig(this.serverSettings);
 				if (!credentials) throw new ApiError(meta.errors.unavailable);
 				const config = { ...credentials, model: this.serverSettings.openaiTranslationModel };
 				return await withTranslationCache(this.redis, {

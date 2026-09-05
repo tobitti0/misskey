@@ -9526,6 +9526,11 @@ export interface operations {
                         deeplAuthKey: string | null;
                         deeplIsPro: boolean;
                         openaiTranslationModel: string;
+                        /** @enum {string} */
+                        translationProvider: 'deepl' | 'openai';
+                        openaiApiKeyConfigured: boolean;
+                        translationProviderOverride: string | null;
+                        openaiApiKeyOverride: boolean;
                         defaultDarkTheme: string | null;
                         defaultLightTheme: string | null;
                         clientOptions: components['schemas']['MetaClientOptions'];
@@ -13013,6 +13018,9 @@ export interface operations {
                     langs?: string[];
                     deeplAuthKey?: string | null;
                     deeplIsPro?: boolean;
+                    /** @enum {string} */
+                    translationProvider?: 'deepl' | 'openai';
+                    openaiApiKey?: string | null;
                     openaiTranslationModel?: string;
                     enableEmail?: boolean;
                     email?: string | null;

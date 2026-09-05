@@ -13378,4 +13378,66 @@ export interface Locale extends ILocale {
          */
         "mfm": string;
     };
+    "_openaiTranslation": {
+        /**
+         * OpenAI 翻訳
+         */
+        "title": string;
+        /**
+         * 翻訳モデル
+         */
+        "model": string;
+        /**
+         * 既定は gpt-5.4-mini です。Responses API と reasoning effort none に対応したモデル名を指定してください。変更後の翻訳から適用されます。
+         */
+        "modelDescription": string;
+        /**
+         * OpenAI を使うには、API キーを保存し、「翻訳サービス」で OpenAI を選んでください。環境変数で指定されている場合は、そちらが優先されます。
+         */
+        "environmentDescription": string;
+        /**
+         * 翻訳サービス
+         */
+        "provider": string;
+        /**
+         * 環境変数によって {provider} が優先されています。画面の設定を使うには、サーバー側で環境変数を解除してください。
+         */
+        "providerOverride": ParameterizedString<"provider">;
+        /**
+         * API キー
+         */
+        "apiKey": string;
+        /**
+         * 設定済みです。空欄のまま保存すると、現在のキーを保持します。変更する場合だけ新しいキーを入力してください。
+         */
+        "keyConfigured": string;
+        /**
+         * 未設定です。misskey-translate Project で発行した API キーを入力してください。保存済みのキーは表示しません。
+         */
+        "keyNotConfigured": string;
+        /**
+         * 保存済みの API キーを削除する
+         */
+        "clearKey": string;
+        /**
+         * 環境変数の API キーが優先されています。ここで保存・削除するキーは、環境変数を解除した後に使われます。
+         */
+        "keyOverride": string;
+        /**
+         * モデル: {model}
+         */
+        "usedModel": ParameterizedString<"model">;
+        /**
+         * トークン: 入力 {input} / 出力 {output} / 合計 {total}
+         */
+        "tokenUsage": ParameterizedString<"input" | "output" | "total">;
+        /**
+         * 保存済みの翻訳です。上記は初回翻訳時の使用量で、今回の表示による追加消費はありません。
+         */
+        "cachedUsage": string;
+        /**
+         * 保存済みの翻訳です。
+         */
+        "cachedResult": string;
+    };
 }

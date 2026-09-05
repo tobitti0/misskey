@@ -10,6 +10,7 @@ import { translateWithOpenAi } from '@/misc/translation/openai.js';
 import type { HttpRequestService } from '@/core/HttpRequestService.js';
 
 describe('translation configuration', () => {
+	const settings = { translationProvider: 'deepl' as const, deeplAuthKey: null, openaiApiKey: null };
 	beforeEach(() => {
 		vi.stubEnv('MISSKEY_TRANSLATION_PROVIDER', '');
 		vi.stubEnv('OPENAI_API_KEY', '');
@@ -19,22 +20,48 @@ describe('translation configuration', () => {
 
 	it('keeps DeepL as the default even when an OpenAI key exists', () => {
 		vi.stubEnv('OPENAI_API_KEY', 'test-key');
-		expect(getTranslationProvider()).toBe('deepl');
-		expect(isTranslationAvailable(null)).toBe(false);
-		expect(isTranslationAvailable('deepl-key')).toBe(true);
+		expect(getTranslationProvider(settings)).toBe('deepl');
+		expect(isTranslationAvailable(settings)).toBe(false);
+		expect(isTranslationAvailable({ ...settings, deeplAuthKey: 'deepl-key' })).toBe(true);
 	});
 
 	it('requires the selected provider to be configured', () => {
 		vi.stubEnv('MISSKEY_TRANSLATION_PROVIDER', 'openai');
-		expect(isTranslationAvailable('deepl-key')).toBe(false);
+		expect(isTranslationAvailable({ ...settings, deeplAuthKey: 'deepl-key' })).toBe(false);
 		vi.stubEnv('OPENAI_API_KEY', '  ');
-		expect(getOpenAiTranslationConfig()).toBeNull();
+		expect(getOpenAiTranslationConfig(settings)).toBeNull();
 		vi.stubEnv('OPENAI_API_KEY', 'test-key');
 		vi.stubEnv('OPENAI_PROJECT_ID', 'proj-test');
-		expect(isTranslationAvailable(null)).toBe(true);
-		expect(getOpenAiTranslationConfig()).toEqual({ apiKey: 'test-key', projectId: 'proj-test' });
+		expect(isTranslationAvailable(settings)).toBe(true);
+		expect(getOpenAiTranslationConfig(settings)).toEqual({ apiKey: 'test-key', projectId: 'proj-test' });
 		vi.stubEnv('MISSKEY_TRANSLATION_PROVIDER', 'typo');
-		expect(isTranslationAvailable('deepl-key')).toBe(false);
+		expect(isTranslationAvailable({ ...settings, deeplAuthKey: 'deepl-key' })).toBe(false);
+	});
+
+	it('uses saved provider and key when environment overrides are absent or blank', () => {
+		const saved = { ...settings, translationProvider: 'openai' as const, openaiApiKey: 'saved-key' };
+		vi.stubEnv('MISSKEY_TRANSLATION_PROVIDER', undefined);
+		vi.stubEnv('OPENAI_API_KEY', undefined);
+		expect(getTranslationProvider(saved)).toBe('openai');
+		expect(isTranslationAvailable(saved)).toBe(true);
+		expect(getOpenAiTranslationConfig(saved)?.apiKey).toBe('saved-key');
+		vi.stubEnv('MISSKEY_TRANSLATION_PROVIDER', '  ');
+		vi.stubEnv('OPENAI_API_KEY', '  ');
+		expect(getTranslationProvider(saved)).toBe('openai');
+		expect(getOpenAiTranslationConfig(saved)?.apiKey).toBe('saved-key');
+		expect(isTranslationAvailable({ ...saved, openaiApiKey: null })).toBe(false);
+	});
+
+	it('prioritizes each environment override independently over saved settings', () => {
+		const saved = { ...settings, translationProvider: 'openai' as const, openaiApiKey: 'saved-key', deeplAuthKey: 'deepl-key' };
+		vi.stubEnv('OPENAI_API_KEY', ' env-key ');
+		expect(getTranslationProvider(saved)).toBe('openai');
+		expect(getOpenAiTranslationConfig(saved)?.apiKey).toBe('env-key');
+		vi.stubEnv('MISSKEY_TRANSLATION_PROVIDER', ' deepl ');
+		expect(getTranslationProvider(saved)).toBe('deepl');
+		expect(isTranslationAvailable(saved)).toBe(true);
+		vi.stubEnv('MISSKEY_TRANSLATION_PROVIDER', 'invalid');
+		expect(isTranslationAvailable(saved)).toBe(false);
 	});
 });
 

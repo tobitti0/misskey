@@ -12,16 +12,22 @@
 
 | 方式 | 変更範囲 | 運用 | 判断 |
 | --- | --- | --- | --- |
-| 管理画面にプロバイダー選択とOpenAIキーを追加 | DB migration、設定API、管理画面、locale、生成型 | 画面から切り替え可能 | 将来の複数管理者運用向け |
-| 環境変数でサーバー全体のプロバイダーを選択 | 既存バックエンド3ファイルと分離モジュール | 切り替え後に再起動 | 今回採用。更新追従性を優先 |
+| 管理画面にプロバイダー選択とOpenAIキーを追加 | DB migration、設定API、管理画面、locale、生成型 | 画面から切り替え可能 | mtn.1で採用。既存のモデル設定と合わせて管理 |
+| 環境変数でサーバー全体のプロバイダーを選択 | 分離モジュール | 切り替え後に再起動 | mtn.0の方式。mtn.1でも優先設定として維持 |
 
-プロバイダー選択とAPIキーは環境変数で管理し、**モデル名は管理画面の「外部サービス → OpenAI翻訳」から設定**する。モデル名のDB列・migration・管理API、および翻訳結果への使用量フィールドを追加した。OpenAI設定・通信・応答検証・Redis保存は `packages/backend/src/misc/translation/`、画面の使用量表示は `MkTranslationInfo.vue` に集約する。新規npm依存は追加しない。
+**管理画面の「外部サービス」で翻訳サービスを選び、「OpenAI翻訳」でAPIキーとモデル名を設定**する。空でない環境変数がある場合は、プロバイダー・キーそれぞれについて環境変数が優先される。OpenAI設定・通信・応答検証・Redis保存は `packages/backend/src/misc/translation/`、画面の使用量表示は `MkTranslationInfo.vue` に集約する。新規npm依存は追加しない。
 
 ## 設定
 
+管理画面「外部サービス → OpenAI翻訳」で、misskey-translate ProjectのAPIキーとモデル名（初期値 `gpt-5.4-mini`）を保存し、「翻訳サービス」で `OpenAI` を選んで保存する。既定のサービスは `DeepL`。画面からの変更は再起動不要で、次の翻訳から適用される。
+
+APIキーはDBの管理者設定に保存する。暗号化保存ではないため、DBとバックアップは他の認証情報と同様に扱う。管理APIはキー本体を返さず、設定済みかどうかだけを返す。入力欄を空のまま保存するとキーを保持し、削除スイッチを有効にして保存すると削除する。管理操作ログの変更前・変更後のキーは伏せる。公開メタ情報にはキー・設定状態・環境変数情報を含めない。DeepLの既存設定方法は変更しない。
+
+環境変数を使う場合は以下のとおり（任意）。画面には優先設定があることを表示する。空文字・空白のみの環境変数は未設定として扱い、DB設定を使う。
+
 | 環境変数 | 設定値 |
 | --- | --- |
-| `MISSKEY_TRANSLATION_PROVIDER` | `deepl`（未設定時の既定）または `openai` |
+| `MISSKEY_TRANSLATION_PROVIDER` | `deepl` または `openai`。未設定時は管理画面の設定（初期値 `deepl`） |
 | `OPENAI_API_KEY` | OpenAIの **misskey-translate Projectで発行したキー** |
 | `OPENAI_PROJECT_ID` | 必要なら同Projectの `proj_...` ID。表示名 `misskey-translate` ではない。Project専用キーなら通常は省略可 |
 
@@ -35,7 +41,7 @@ APIの既存 `{ sourceLang, text }` に、任意の `model`、`usage: { inputTok
 
 OpenAIのプレーンテキスト応答には原文言語のメタデータがないため、`sourceLang` は `unknown` とする。画面にも原文言語が `unknown` と表示される。言語検出用の追加API呼び出しは行わない。
 
-`openai` 指定時はDeepLキーを消す必要はない。OpenAIキーがない場合やプロバイダーの設定値が不正な場合は翻訳を無効とし、DeepLへ暗黙に送信しない。DeepLへ戻すにはプロバイダーを `deepl` にして再起動する。
+`openai` 指定時はDeepLキーを消す必要はない。OpenAIキーがない場合や環境変数のプロバイダー設定値が不正な場合は翻訳を無効とし、DeepLへ暗黙に送信しない。DeepLへ戻すには管理画面で `DeepL` を選ぶ。環境変数が設定されている場合は、そちらを変更または解除してコンテナを再作成する。
 
 ## Dockerでの導入
 
@@ -45,9 +51,9 @@ OpenAIのプレーンテキスト応答には原文言語のメタデータが�
 docker build -t misskey-mtn:local .
 ```
 
-**モデル名の列追加があるため、新イメージで通常の `pnpm migrate` 相当を実行してから起動する。** 本流Dockerイメージの標準起動コマンド `migrateandstart` は起動時にmigrationを実行する。DBバックアップなど通常の更新手順に従う。
+**モデル名（mtn.0）、プロバイダーとキー（mtn.1）の列追加があるため、新イメージで通常の `pnpm migrate` 相当を実行してから起動する。** 本流Dockerイメージの標準起動コマンド `migrateandstart` は起動時にmigrationを実行する。DBバックアップなど通常の更新手順に従う。mtn.0で環境変数を設定済みなら、その設定が引き続き優先される。画面での管理へ移す場合は、画面でキーとサービスを保存してから環境変数を解除する。
 
-既存ComposeのMisskeyサービス（通常 `web`）へ、ローカルイメージと環境変数ファイルを設定する例:
+既存ComposeのMisskeyサービス（通常 `web`）へ、ローカルイメージと環境変数ファイルを設定する例（画面から設定する場合、`env_file` は不要）:
 
 ```yaml
 services:
@@ -111,4 +117,4 @@ docker compose -p misskey-mtn-check -f mtn/translation/compose.check.yml down -v
 - [GPT-5.4 mini](https://developers.openai.com/api/docs/models/gpt-5.4-mini)
 - [Responses APIの作成パラメーター](https://developers.openai.com/api/reference/cli/resources/responses/methods/create)
 
-Changelog候補: OpenAI翻訳、管理画面でのモデル設定、使用トークン表示、DeepLを含む7日間の翻訳キャッシュを追加。
+Changelog候補: 翻訳サービスとOpenAIのAPIキーを管理画面から設定可能にし、環境変数による優先設定を維持。

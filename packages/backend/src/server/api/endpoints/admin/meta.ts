@@ -440,6 +440,22 @@ export const meta = {
 				type: 'string',
 				optional: false, nullable: false,
 			},
+			translationProvider: {
+				type: 'string', enum: ['deepl', 'openai'],
+				optional: false, nullable: false,
+			},
+			openaiApiKeyConfigured: {
+				type: 'boolean',
+				optional: false, nullable: false,
+			},
+			translationProviderOverride: {
+				type: 'string',
+				optional: false, nullable: true,
+			},
+			openaiApiKeyOverride: {
+				type: 'boolean',
+				optional: false, nullable: false,
+			},
 			defaultDarkTheme: {
 				type: 'string',
 				optional: false, nullable: true,
@@ -695,7 +711,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				clientOptions: instance.clientOptions,
 				enableEmail: instance.enableEmail,
 				enableServiceWorker: instance.enableServiceWorker,
-				translatorAvailable: isTranslationAvailable(instance.deeplAuthKey),
+				translatorAvailable: isTranslationAvailable(instance),
 				cacheRemoteFiles: instance.cacheRemoteFiles,
 				cacheRemoteSensitiveFiles: instance.cacheRemoteSensitiveFiles,
 				pinnedUsers: instance.pinnedUsers,
@@ -743,6 +759,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				deeplAuthKey: instance.deeplAuthKey,
 				deeplIsPro: instance.deeplIsPro,
 				openaiTranslationModel: instance.openaiTranslationModel,
+				translationProvider: instance.translationProvider,
+				openaiApiKeyConfigured: !!instance.openaiApiKey,
+				translationProviderOverride: process.env.MISSKEY_TRANSLATION_PROVIDER?.trim() || null,
+				openaiApiKeyOverride: !!process.env.OPENAI_API_KEY?.trim(),
 				enableIpLogging: instance.enableIpLogging,
 				enableActiveEmailValidation: instance.enableActiveEmailValidation,
 				enableVerifymailApi: instance.enableVerifymailApi,

@@ -111,6 +111,8 @@ export const paramDef = {
 		},
 		deeplAuthKey: { type: 'string', nullable: true },
 		deeplIsPro: { type: 'boolean' },
+		translationProvider: { type: 'string', enum: ['deepl', 'openai'] },
+		openaiApiKey: { type: 'string', nullable: true, maxLength: 1024 },
 		openaiTranslationModel: { type: 'string', minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]*$' },
 		enableEmail: { type: 'boolean' },
 		email: { type: 'string', nullable: true },
@@ -607,6 +609,14 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				set.openaiTranslationModel = ps.openaiTranslationModel;
 			}
 
+			if (ps.translationProvider !== undefined) {
+				set.translationProvider = ps.translationProvider;
+			}
+
+			if (ps.openaiApiKey !== undefined) {
+				set.openaiApiKey = ps.openaiApiKey?.trim() || null;
+			}
+
 			if (ps.enableIpLogging !== undefined) {
 				set.enableIpLogging = ps.enableIpLogging;
 			}
@@ -804,8 +814,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const after = await this.metaService.fetch(true);
 
 			this.moderationLogService.log(me, 'updateServerSettings', {
-				before,
-				after,
+				before: { ...before, openaiApiKey: before.openaiApiKey ? '[REDACTED]' : null },
+				after: { ...after, openaiApiKey: after.openaiApiKey ? '[REDACTED]' : null },
 			});
 		});
 	}

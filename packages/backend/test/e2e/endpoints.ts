@@ -31,6 +31,54 @@ describe('Endpoints', () => {
 	}, 1000 * 60 * 2);
 
 	describe('OpenAI translation model', () => {
+		test('saves provider and a write-only key, preserves it on other updates, and clears it explicitly', async () => {
+			const before = await api('admin/meta', {}, alice);
+			expect(before.body.translationProvider).toBe('deepl');
+			expect(before.body.openaiApiKeyConfigured).toBe(false);
+			const key = 'test-only-openai-key';
+			try {
+				const updated = await api('admin/update-meta', { translationProvider: 'openai', openaiApiKey: ` ${key} ` }, alice);
+				expect(updated.status).toBe(204);
+				await expect.poll(async () => (await api('meta', {})).body.translatorAvailable).toBe(true);
+				const saved = await api('admin/meta', {}, alice);
+				expect(saved.body).toMatchObject({ translationProvider: 'openai', openaiApiKeyConfigured: true, translationProviderOverride: null, openaiApiKeyOverride: false });
+				expect(saved.body).not.toHaveProperty('openaiApiKey');
+				const publicMeta = await api('meta', {});
+				for (const field of ['openaiApiKey', 'openaiApiKeyConfigured', 'translationProvider', 'translationProviderOverride', 'openaiApiKeyOverride']) {
+					expect(publicMeta.body).not.toHaveProperty(field);
+				}
+				expect((await api('admin/update-meta', { openaiTranslationModel: 'gpt-5.4-mini' }, alice)).status).toBe(204);
+				expect((await api('admin/meta', {}, alice)).body.openaiApiKeyConfigured).toBe(true);
+				await expect.poll(async () => {
+					const logs = await api('admin/show-moderation-logs', { type: 'updateServerSettings', limit: 100 }, alice);
+					expect(JSON.stringify(logs.body)).not.toContain(key);
+					return logs.body.some(log => {
+						const info = log.info as { before?: { openaiApiKey?: string }; after?: { openaiApiKey?: string } };
+						return info.before?.openaiApiKey === '[REDACTED]' && info.after?.openaiApiKey === '[REDACTED]';
+					});
+				}).toBe(true);
+				for (const empty of [null, '', '  ']) {
+					expect((await api('admin/update-meta', { openaiApiKey: key }, alice)).status).toBe(204);
+					expect((await api('admin/update-meta', { openaiApiKey: empty }, alice)).status).toBe(204);
+					expect((await api('admin/meta', {}, alice)).body.openaiApiKeyConfigured).toBe(false);
+					await expect.poll(async () => (await api('meta', {})).body.translatorAvailable).toBe(false);
+				}
+			} finally {
+				await api('admin/update-meta', { translationProvider: before.body.translationProvider, openaiApiKey: null }, alice);
+			}
+		});
+
+		test('rejects unauthorized access and invalid provider or oversized key', async () => {
+			expect((await api('admin/meta', {}, bob)).status).toBe(403);
+			expect((await api('admin/meta', {})).status).toBe(401);
+			expect((await api('admin/update-meta', { translationProvider: 'openai', openaiApiKey: 'test-key' }, bob)).status).toBe(403);
+			for (const params of [{ translationProvider: 'invalid' }, { openaiApiKey: 'x'.repeat(1025) }]) {
+				const response = await api('admin/update-meta', params as never, alice);
+				expect(response.status).toBe(400);
+				expect(response.body).toMatchObject({ error: { code: 'INVALID_PARAM' } });
+			}
+		});
+
 		test('administrator can save and read the model without exposing it in public meta', async () => {
 			const before = await api('admin/meta', {}, alice);
 			expect(before.body.openaiTranslationModel).toBe('gpt-5.4-mini');
