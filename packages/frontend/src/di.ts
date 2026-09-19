@@ -6,8 +6,12 @@
 import type { InjectionKey, Ref, ComputedRef } from 'vue';
 import type { PageMetadata } from '@/page.js';
 import type { Router } from '@/router.js';
+import type { PwaBackButton } from '@/utility/pwa-back-button.js';
+import type { DeckWindowHistory } from '@/utility/deck-window-history.js';
 
 export const DI = {
+	deckWindowHistory: Symbol() as InjectionKey<DeckWindowHistory | null>,
+	pwaBackButton: Symbol() as InjectionKey<PwaBackButton | null>,
 	routerCurrentDepth: Symbol() as InjectionKey<number>,
 	router: Symbol() as InjectionKey<Router>,
 	mock: Symbol() as InjectionKey<boolean>,

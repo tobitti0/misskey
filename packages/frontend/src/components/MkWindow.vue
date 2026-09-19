@@ -59,6 +59,7 @@ import { elementContains } from '@/utility/element-contains.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
+import { usePwaBackButton } from '@/composables/use-pwa-back-button.js';
 
 type WindowButton = {
 	title: string;
@@ -115,6 +116,7 @@ const props = withDefaults(defineProps<{
 	contextmenu?: MenuItem[] | null;
 	buttonsLeft?: WindowButton[];
 	buttonsRight?: WindowButton[];
+	usesBrowserHistory?: boolean;
 }>(), {
 	initialWidth: null,
 	initialHeight: null,
@@ -128,6 +130,7 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
+	(ev: 'close'): void;
 	(ev: 'closed'): void;
 }>();
 
@@ -149,8 +152,18 @@ let unResizedLeft = '';
 let unResizedWidth = '';
 let unResizedHeight = '';
 
+usePwaBackButton(() => showing.value, {
+	getZIndex: () => Number(rootEl.value?.style.zIndex ?? 0),
+	usesBrowserHistory: props.usesBrowserHistory,
+	back: () => {
+		if (props.closeButton) close();
+	},
+});
+
 function close() {
+	if (!showing.value) return;
 	showing.value = false;
+	emit('close');
 }
 
 function onKeydown(evt: KeyboardEvent) {

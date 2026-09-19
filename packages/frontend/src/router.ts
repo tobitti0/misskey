@@ -10,6 +10,7 @@ import { Nirax } from '@/lib/nirax.js';
 import { ROUTE_DEF } from '@/router.definition.js';
 import { analytics } from '@/analytics.js';
 import { DI } from '@/di.js';
+import type { DeckWindowHistory } from '@/utility/deck-window-history.js';
 
 export type Router = Nirax<typeof ROUTE_DEF>;
 
@@ -19,16 +20,35 @@ export function createRouter(fullPath: string): Router {
 
 export const mainRouter = createRouter(window.location.pathname + window.location.search + window.location.hash);
 
+let deckWindowHistory: DeckWindowHistory | null = null;
+let restoringHistory = false;
+
+export function setDeckWindowHistory(history: DeckWindowHistory | null) {
+	deckWindowHistory = history;
+}
+
 window.addEventListener('popstate', (event) => {
-	mainRouter.replaceByPath(window.location.pathname + window.location.search + window.location.hash);
+	const path = window.location.pathname + window.location.search + window.location.hash;
+	if (deckWindowHistory?.restore(event.state, path)) return;
+	if (path === mainRouter.getCurrentFullPath()) return;
+	restoringHistory = true;
+	try {
+		mainRouter.replaceByPath(path);
+	} finally {
+		restoringHistory = false;
+	}
 });
 
 mainRouter.addListener('push', ctx => {
-	window.history.pushState({ }, '', ctx.fullPath);
+	if (deckWindowHistory) deckWindowHistory.pushRoute(ctx.fullPath);
+	else window.history.pushState({ }, '', ctx.fullPath);
 });
 
 mainRouter.addListener('replace', ctx => {
-	window.history.replaceState({ }, '', ctx.fullPath);
+	// popstate already selected the right entry; only rewrite a resolved redirect.
+	if (restoringHistory && ctx.fullPath === window.location.pathname + window.location.search + window.location.hash) return;
+	if (deckWindowHistory) deckWindowHistory.replaceRoute(ctx.fullPath);
+	else window.history.replaceState(restoringHistory ? window.history.state : {}, '', ctx.fullPath);
 });
 
 mainRouter.addListener('forceReplace', ctx => {

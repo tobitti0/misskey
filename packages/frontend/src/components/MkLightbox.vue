@@ -59,6 +59,7 @@ import * as os from '@/os.js';
 import { prefer } from '@/preferences.js';
 import { isTouchUsing } from '@/utility/touch.js';
 import { focusTrap } from '@/utility/focus-trap.js';
+import { usePwaBackButton } from '@/composables/use-pwa-back-button.js';
 
 const props = withDefaults(defineProps<{
 	defaultIndex?: number;
@@ -106,6 +107,10 @@ const closeAnimDuration = 200;
 const slideAnimDuration = 300;
 const zIndex = os.claimZIndex('high');
 const showing = ref(true);
+const hasPwaBackButton = usePwaBackButton(() => showing.value, {
+	getZIndex: () => zIndex,
+	back: close,
+});
 const screenWidth = ref(window.innerWidth);
 const contentsOffset = ref(currentIndex.value * -window.innerWidth);
 const enableSlideTransition = ref(false);
@@ -145,7 +150,7 @@ function scrollToCurrentIndex() {
 /** ギャラリーそのものを閉じるための内部処理（閉じる処理を書く場合は `close` か、item内では `closeThis` を使う） */
 function closeGallery() {
 	showing.value = false;
-	if (window.location.hash === '#pswp') {
+	if (!hasPwaBackButton && window.location.hash === '#pswp') {
 		window.history.back();
 	}
 }
@@ -217,8 +222,10 @@ onMounted(() => {
 		}
 	}, { immediate: true });
 
-	window.history.pushState(null, '', '#pswp');
-	window.addEventListener('popstate', onPopState);
+	if (!hasPwaBackButton) {
+		window.history.pushState(null, '', '#pswp');
+		window.addEventListener('popstate', onPopState);
+	}
 });
 
 const keymap = {
