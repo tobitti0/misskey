@@ -42,7 +42,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { nextTick, normalizeClass, onMounted, onUnmounted, provide, watch, ref, useTemplateRef, computed } from 'vue';
+import { nextTick, normalizeClass, onMounted, onUnmounted, provide, watch, ref, useTemplateRef, computed, getCurrentInstance } from 'vue';
 import type { Keymap } from '@/utility/hotkey.js';
 import * as os from '@/os.js';
 import { isTouchUsing } from '@/utility/touch.js';
@@ -51,6 +51,7 @@ import { focusTrap } from '@/utility/focus-trap.js';
 import { focusParent } from '@/utility/focus.js';
 import { prefer } from '@/preferences.js';
 import { DI } from '@/di.js';
+import { usePwaBackButton } from '@/composables/use-pwa-back-button.js';
 
 function getFixedContainer(el: Element | null): Element | null {
 	if (el == null || el.tagName === 'BODY') return null;
@@ -74,6 +75,7 @@ const props = withDefaults(defineProps<{
 	transparentBg?: boolean;
 	hasInteractionWithOtherFocusTrappedEls?: boolean;
 	returnFocusTo?: HTMLElement | null;
+	backButton?: () => void;
 }>(), {
 	manualShowing: null,
 	anchorElement: null,
@@ -104,6 +106,16 @@ const showing = ref(true);
 const modalRootEl = useTemplateRef('modalRootEl');
 const content = useTemplateRef('content');
 const zIndex = os.claimZIndex(props.zPriority);
+const instance = getCurrentInstance()!;
+usePwaBackButton(() => props.manualShowing ?? showing.value, {
+	getZIndex: () => zIndex,
+	back: () => {
+		// Use the owner's dismissal path, including unsaved-post confirmations.
+		if (props.backButton) props.backButton();
+		else if (instance.vnode.props?.onEsc) emit('esc');
+		else emit('click');
+	},
+});
 const useSendAnime = ref(false);
 const type = computed<ModalTypes>(() => {
 	if (props.preferType === 'auto') {

@@ -11,6 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:buttonsLeft="buttonsLeft"
 	:buttonsRight="buttonsRight"
 	:contextmenu="contextmenu"
+	:backButton="backOrClose"
 	@closed="emit('closed')"
 >
 	<template #header>
@@ -161,8 +162,14 @@ const contextmenu = computed(() => ([{
 }]));
 
 function back() {
+	if (_history_.value.length <= 1) return;
 	_history_.value.pop();
 	windowRouter.replaceByPath(_history_.value.at(-1)!.path);
+}
+
+function backOrClose() {
+	if (_history_.value.length > 1) back();
+	else close();
 }
 
 function reload() {

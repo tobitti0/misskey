@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div>
+<div role="status">
 	<Transition
 		:enterActiveClass="prefer.s.animation ? $style.transition_toast_enterActive : ''"
 		:leaveActiveClass="prefer.s.animation ? $style.transition_toast_leaveActive : ''"

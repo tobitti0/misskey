@@ -86,7 +86,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { defineAsyncComponent, ref, useTemplateRef } from 'vue';
+import { defineAsyncComponent, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
 import XCommon from './_common_/common.vue';
 import { genId } from '@/utility/id.js';
 import XSidebar from '@/ui/_common_/navbar.vue';
@@ -121,6 +121,9 @@ import { shouldSuggestRestoreBackup } from '@/preferences/utility.js';
 import { shouldSuggestReload } from '@/utility/reload-suggest.js';
 import { startTour } from '@/utility/tour.js';
 import { closeTip } from '@/tips.js';
+import { DI } from '@/di.js';
+import { getPwaCloseWatcher, PwaBackButton } from '@/utility/pwa-back-button.js';
+import MkToast from '@/components/MkToast.vue';
 
 const XStatusBars = defineAsyncComponent(() => import('@/ui/_common_/statusbars.vue'));
 const XAnnouncements = defineAsyncComponent(() => import('@/ui/_common_/announcements.vue'));
@@ -160,6 +163,44 @@ const withWallpaper = prefer.s['deck.wallpaper'] != null;
 const drawerMenuShowing = ref(false);
 const widgetsShowing = ref(false);
 const gap = prefer.r['deck.columnGap'];
+
+const PwaCloseWatcher = getPwaCloseWatcher();
+const backButton = PwaCloseWatcher == null ? null : new PwaBackButton(
+	() => new PwaCloseWatcher(),
+	() => {
+		const { dispose } = os.popup(MkToast, { message: i18n.ts._deck.backAgainToExit }, {
+			closed: () => dispose(),
+		});
+		return dispose;
+	},
+);
+provide(DI.pwaBackButton, backButton);
+
+if (backButton != null) {
+	watch(mainRouter.currentRoute, route => backButton.setAtRoot(route.name === 'index'), { immediate: true });
+	const listeners = new AbortController();
+	onMounted(() => {
+		window.addEventListener('pointerdown', backButton.reset, { passive: true, signal: listeners.signal });
+		window.addEventListener('keydown', event => {
+			if (event.key !== 'Escape' && event.key !== 'BrowserBack') backButton.reset();
+		}, { signal: listeners.signal });
+		window.addEventListener('pageshow', backButton.reset, { signal: listeners.signal });
+		window.document.addEventListener('visibilitychange', backButton.reset, { signal: listeners.signal });
+	});
+	onBeforeUnmount(() => {
+		listeners.abort();
+		backButton.dispose();
+	});
+
+	// These drawers belong to this component, so register them directly rather
+	// than injecting the controller provided to descendant windows and modals.
+	watch(drawerMenuShowing, (showing, _, onCleanup) => {
+		if (showing) onCleanup(backButton.register({ getZIndex: () => 1001, back: () => { drawerMenuShowing.value = false; } }));
+	}, { flush: 'sync' });
+	watch(widgetsShowing, (showing, _, onCleanup) => {
+		if (showing) onCleanup(backButton.register({ getZIndex: () => 1001, back: () => { widgetsShowing.value = false; } }));
+	}, { flush: 'sync' });
+}
 
 /*
 const route = 'TODO';

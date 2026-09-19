@@ -6,8 +6,10 @@
 import type { InjectionKey, Ref, ComputedRef } from 'vue';
 import type { PageMetadata } from '@/page.js';
 import type { Router } from '@/router.js';
+import type { PwaBackButton } from '@/utility/pwa-back-button.js';
 
 export const DI = {
+	pwaBackButton: Symbol() as InjectionKey<PwaBackButton | null>,
 	routerCurrentDepth: Symbol() as InjectionKey<number>,
 	router: Symbol() as InjectionKey<Router>,
 	mock: Symbol() as InjectionKey<boolean>,
