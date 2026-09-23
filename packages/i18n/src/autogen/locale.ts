@@ -11107,6 +11107,10 @@ export interface Locale extends ILocale {
     };
     "_deck": {
         /**
+         * もう一度戻るとアプリを終了します
+         */
+        "backAgainToExit": string;
+        /**
          * 常にメインカラムを表示
          */
         "alwaysShowMainColumn": string;

@@ -17,6 +17,7 @@ import type { MkSelectItem } from '@/components/MkSelect.vue';
 import type { OptionValue } from '@/types/option-value.js';
 import type { MkDialogReturnType } from '@/components/MkDialog.vue';
 import type { OverloadToUnion } from '@/types/overload-to-union.js';
+import type { DeckHistoryWindow } from '@/utility/deck-window-history.js';
 import type MkRoleSelectDialog_TypeReferenceOnly from '@/components/MkRoleSelectDialog.vue';
 import type MkEmojiPickerDialog_TypeReferenceOnly from '@/components/MkEmojiPickerDialog.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -243,9 +244,10 @@ export async function popupAsyncWithDialog<T extends Component>(
 	return popup(component, props, events);
 }
 
-export function pageWindow(path: string) {
+export function pageWindow(path: string, historyState?: DeckHistoryWindow) {
 	const { dispose } = popup(MkPageWindow, {
 		initialPath: path,
+		historyState,
 	}, {
 		closed: () => dispose(),
 	});

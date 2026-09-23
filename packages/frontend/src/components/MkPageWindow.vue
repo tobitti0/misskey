@@ -11,6 +11,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:buttonsLeft="buttonsLeft"
 	:buttonsRight="buttonsRight"
 	:contextmenu="contextmenu"
+	:usesBrowserHistory="windowHistory != null"
+	@close="historyRegistration?.close()"
 	@closed="emit('closed')"
 >
 	<template #header>
@@ -28,7 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, nextTick } from 'vue';
+import { computed, inject, onMounted, onUnmounted, provide, ref, useTemplateRef, nextTick } from 'vue';
 import { url } from '@@/js/config.js';
 import type { PageMetadata } from '@/page.js';
 import RouterView from '@/components/global/RouterView.vue';
@@ -43,9 +45,11 @@ import { createRouter, mainRouter } from '@/router.js';
 import { analytics } from '@/analytics.js';
 import { DI } from '@/di.js';
 import { prefer } from '@/preferences.js';
+import type { DeckHistoryWindow, DeckWindowHistory } from '@/utility/deck-window-history.js';
 
 const props = defineProps<{
 	initialPath: string;
+	historyState?: DeckHistoryWindow;
 }>();
 
 const emit = defineEmits<{
@@ -53,12 +57,13 @@ const emit = defineEmits<{
 }>();
 
 const windowRouter = createRouter(props.initialPath);
+const windowHistory = inject(DI.deckWindowHistory, null);
+let historyRegistration: ReturnType<DeckWindowHistory['register']> | undefined;
+let restoringHistory = false;
 
 const pageMetadata = ref<null | PageMetadata>(null);
 const windowEl = useTemplateRef('windowEl');
-const _history_ = ref<{ path: string; }[]>([{
-	path: windowRouter.getCurrentFullPath(),
-}]);
+const _history_ = ref((props.historyState?.paths ?? [windowRouter.getCurrentFullPath()]).map(path => ({ path })));
 const buttonsLeft = computed(() => {
 	return _history_.value.length > 1 ? [{
 		icon: 'ti ti-arrow-left',
@@ -91,11 +96,13 @@ const searchMarkerId = ref<string | null>(getSearchMarker(props.initialPath));
 
 windowRouter.addListener('push', ctx => {
 	_history_.value.push({ path: ctx.fullPath });
+	if (!restoringHistory) historyRegistration?.push(_history_.value.map(entry => entry.path));
 });
 
 windowRouter.addListener('replace', ctx => {
 	_history_.value.pop();
 	_history_.value.push({ path: ctx.fullPath });
+	if (!restoringHistory) historyRegistration?.replace(_history_.value.map(entry => entry.path));
 });
 
 windowRouter.addListener('forcePush', ctx => {
@@ -161,6 +168,11 @@ const contextmenu = computed(() => ([{
 }]));
 
 function back() {
+	if (_history_.value.length <= 1) return;
+	if (historyRegistration) {
+		historyRegistration.back();
+		return;
+	}
 	_history_.value.pop();
 	windowRouter.replaceByPath(_history_.value.at(-1)!.path);
 }
@@ -184,6 +196,20 @@ function popout() {
 }
 
 onMounted(() => {
+	historyRegistration = windowHistory?.register(_history_.value.map(entry => entry.path), {
+		restore: paths => {
+			if (JSON.stringify(paths) === JSON.stringify(_history_.value.map(entry => entry.path))) return;
+			restoringHistory = true;
+			try {
+				_history_.value = paths.map(path => ({ path }));
+				windowRouter.replaceByPath(paths.at(-1)!);
+			} finally {
+				restoringHistory = false;
+			}
+		},
+		close,
+	}, props.historyState?.id);
+
 	analytics.page({
 		path: props.initialPath,
 		title: props.initialPath,
@@ -196,6 +222,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+	historyRegistration?.close();
 	openingWindowsCount.value--;
 });
 
